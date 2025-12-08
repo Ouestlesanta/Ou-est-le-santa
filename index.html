@@ -52,17 +52,18 @@
     #pubInputContainer {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 0;
       position: relative;
     }
     #suggestions {
       position: absolute;
+      top: 100%; /* directly below input */
+      left: 0;
+      right: 0;
       background: white;
       border: 1px solid #ccc;
       max-height: 150px;
       overflow-y: auto;
-      width: 100%;
-      top: 42px;
       z-index: 1000;
       font-family: Arial, sans-serif;
     }
@@ -78,11 +79,11 @@
 <body>
 
 <div id="controls">
-  <button id="togglePubNameBtn">Hide Pub Name</button>
   <div id="pubInputContainer">
     <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
     <div id="suggestions"></div>
   </div>
+  <button id="togglePubNameBtn">Hide Pub Name</button>
   <button id="updateBtn">Set Pub Location</button>
   <button id="shrinkBtn">Shrink Radius</button>
   <span id="radiusDisplay">Radius: 2000 m</span>
@@ -103,6 +104,7 @@ let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
+// Random center so pub is inside circle
 function getRandomCenter(pubLat, pubLng, radius) {
     let margin = 50;
     let maxDistance = Math.max(radius - margin, 1);
@@ -113,6 +115,7 @@ function getRandomCenter(pubLat, pubLng, radius) {
     return [centerLat, centerLng];
 }
 
+// Draw/update circle
 function drawCircle() {
     if (circle) map.removeLayer(circle);
     let center = getRandomCenter(pubLat, pubLng, radius);
@@ -144,7 +147,7 @@ toggleBtn.addEventListener('click', () => {
     }
 });
 
-// Nominatim autocomplete
+// Nominatim autocomplete with debounce
 const locationInput = document.getElementById('locationInput');
 const suggestionsDiv = document.getElementById('suggestions');
 let debounceTimer;
@@ -165,7 +168,7 @@ locationInput.addEventListener('input', () => {
                     div.innerText = place.display_name;
                     div.addEventListener('click', () => {
                         locationInput.value = place.display_name;
-                        // No clearing of suggestions here
+                        suggestionsDiv.innerHTML = ''; // hide dropdown after selection
                     });
                     suggestionsDiv.appendChild(div);
                 });
@@ -185,7 +188,6 @@ document.getElementById('updateBtn').addEventListener('click', () => {
                 pubLng = parseFloat(results[0].lon);
                 radius = 2000;
                 drawCircle();
-                // no clearing of suggestions
             } else {
                 alert("Location not found");
             }
