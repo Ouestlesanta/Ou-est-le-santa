@@ -144,7 +144,7 @@ locationInput.addEventListener('input', () => {
                     div.innerText = place.display_name;
                     div.addEventListener('click', () => {
                         locationInput.value = place.display_name;
-                        suggestionsDiv.innerHTML = '';
+                        suggestionsDiv.innerHTML = ''; // clear dropdown when clicked
                     });
                     suggestionsDiv.appendChild(div);
                 });
@@ -164,6 +164,7 @@ document.getElementById('updateBtn').addEventListener('click', () => {
                 pubLng = parseFloat(results[0].lon);
                 radius = 2000;
                 drawCircle();
+                suggestionsDiv.innerHTML = ''; // clear dropdown after setting pub
             } else {
                 alert("Location not found");
             }
