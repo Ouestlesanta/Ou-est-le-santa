@@ -5,6 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
   <style>
@@ -81,7 +82,6 @@
       padding: 10px;
       border-bottom: 1px solid #ddd;
       cursor: pointer;
-      font-family: sans-serif;
     }
 
     .suggestion-item:hover {
@@ -109,130 +109,145 @@
 
 <div id="map"></div>
 
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-const map = L.map('map').setView([51.5074, -0.1278], 14);
-
+let map = L.map('map').setView([51.5074, -0.1278], 14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-const input = document.getElementById("locationInput");
-const suggestions = document.getElementById("suggestions");
-const radiusDisplay = document.getElementById("radiusDisplay");
-const updateBtn = document.getElementById("updateBtn");
-const toggleBtn = document.getElementById("togglePubBtn");
-const shrinkBtn = document.getElementById("shrinkBtn");
-
 let radius = 2000;
+let circle = null;
+let circleCenter = null;
+
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
-let circleCenter = null;
+let input = document.getElementById("locationInput");
+let suggestions = document.getElementById("suggestions");
+let pubBoxVisible = true;
 
-// Create circle once
-const circle = L.circle([0,0], {
-  color: 'red',
-  fillColor: '#f03',
-  fillOpacity: 0.25,
-  radius: radius
-}).addTo(map);
+// Get random center that guarantees pub inside circle
+function getRandomCenter(pubLat, pubLng, radius) {
+  let angle = Math.random() * 2 * Math.PI;
+  let distance = Math.random() * (radius - 10);
 
-// Random centre
-function getRandomCenter(lat, lng, r) {
-  const angle = Math.random() * 2 * Math.PI;
-  const dist = Math.random() * (r - 10);
+  let centerLat = pubLat + (distance / 111000) * Math.cos(angle);
+  let centerLng = pubLng + (distance / 111000) *
+    Math.sin(angle) / Math.cos(pubLat * Math.PI / 180);
 
-  return [
-    lat + (dist / 111000) * Math.cos(angle),
-    lng + (dist / 111000) * Math.sin(angle) / Math.cos(lat * Math.PI / 180)
-  ];
+  return [centerLat, centerLng];
 }
 
-// Fast distance calculation
-function distMeters(aLat, aLng, bLat, bLng) {
-  const x = (bLng - aLng) * Math.cos((aLat + bLat) * 0.5 * Math.PI / 180);
-  const y = (bLat - aLat) * Math.PI / 180;
-  return Math.sqrt(x*x + y*y) * 6371000;
+// Distance calculator
+function distanceInMeters(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+    Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
-// Update circle
-function updateCircle() {
+// Draw / update circle
+function drawCircle() {
   if (!circleCenter) {
     circleCenter = getRandomCenter(pubLat, pubLng, radius);
   }
 
-  circle.setLatLng(circleCenter);
-  circle.setRadius(radius);
+  if (circle) map.removeLayer(circle);
 
-  map.fitBounds(circle.getBounds(), { padding: [30, 30] });
+  circle = L.circle(circleCenter, {
+    color: 'red',
+    fillColor: '#f03',
+    fillOpacity: 0.25,
+    radius: radius
+  }).addTo(map);
 
-  radiusDisplay.textContent = `Radius: ${Math.round(radius)} m`;
+  map.fitBounds(circle.getBounds(), { padding: [40, 40] });
+
+  document.getElementById("radiusDisplay").innerText =
+    `Radius: ${Math.round(radius)} m`;
 }
 
-// Search optimisation
-let typingTimer;
+// Nominatim live search
+let searchTimeout = null;
 input.addEventListener("input", () => {
-  const q = input.value.trim();
-  if (q.length < 3) {
+  let query = input.value.trim();
+  if (query.length < 3) {
     suggestions.innerHTML = "";
     return;
   }
 
-  clearTimeout(typingTimer);
-  typingTimer = setTimeout(() => {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`)
-      .then(r => r.json())
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+      .then(res => res.json())
       .then(data => {
         suggestions.innerHTML = "";
         data.forEach(place => {
-          const div = document.createElement("div");
+          let div = document.createElement("div");
           div.className = "suggestion-item";
-          div.textContent = place.display_name;
+          div.innerText = place.display_name;
           div.onclick = () => {
             input.value = place.display_name;
-            pubLat = +place.lat;
-            pubLng = +place.lon;
+            pubLat = parseFloat(place.lat);
+            pubLng = parseFloat(place.lon);
             radius = 2000;
             circleCenter = null;
-            suggestions.innerHTML = "";
-            updateCircle();
+            drawCircle();
           };
           suggestions.appendChild(div);
         });
       });
-  }, 200);
+  }, 250);
 });
 
-// Buttons
-updateBtn.onclick = () => {
+// Set pub button
+document.getElementById("updateBtn").onclick = () => {
   circleCenter = null;
-  updateCircle();
+  drawCircle();
 };
 
-toggleBtn.onclick = () => {
-  const hidden = input.classList.toggle("hidden");
+// Hide/Show pub box + button
+document.getElementById("togglePubBtn").onclick = () => {
+  pubBoxVisible = !pubBoxVisible;
+
+  input.classList.toggle("hidden");
   suggestions.classList.toggle("hidden");
-  updateBtn.classList.toggle("hidden");
+  document.getElementById("updateBtn").classList.toggle("hidden");
 
-  toggleBtn.textContent = hidden ? 'Show Pub Name' : 'Hide Pub Name';
+  document.getElementById("togglePubBtn").innerText =
+    pubBoxVisible ? "Hide Pub Name" : "Show Pub Name";
 };
 
-shrinkBtn.onclick = () => {
+// Shrink radius logic
+document.getElementById("shrinkBtn").onclick = () => {
   radius *= 0.75;
   if (radius < 5) radius = 5;
 
-  const d = distMeters(pubLat, pubLng, circleCenter[0], circleCenter[1]);
-  if (d > radius) {
+  let dist = distanceInMeters(
+    pubLat, pubLng,
+    circleCenter[0], circleCenter[1]
+  );
+
+  if (dist > radius) {
     circleCenter = getRandomCenter(pubLat, pubLng, radius);
   }
 
-  updateCircle();
+  drawCircle();
 };
 
-// Initial render
-updateCircle();
+// Initial circle
+drawCircle();
 </script>
 
 </body>
