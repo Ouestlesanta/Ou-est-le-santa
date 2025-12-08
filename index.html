@@ -39,15 +39,27 @@
       border: none;
       color: white;
       cursor: pointer;
-      border-radius: 5px;
+      border-radius: 6px;
       transition: background 0.2s;
     }
-    #updateBtn { background-color: #d62828; }
-    #updateBtn:hover { background-color: #a81f1f; }
-    #shrinkBtn { background-color: #2a9d8f; }
-    #shrinkBtn:hover { background-color: #21766f; }
-    #togglePubNameBtn { background-color: #f4a261; }
-    #togglePubNameBtn:hover { background-color: #d48c49; }
+    #updateBtn { 
+      background-color: #333;  /* dark grey */
+    }
+    #updateBtn:hover { 
+      background-color: #111; 
+    }
+    #shrinkBtn { 
+      background-color: #2a9d8f; 
+    }
+    #shrinkBtn:hover { 
+      background-color: #21766f; 
+    }
+    #togglePubNameBtn { 
+      background-color: #d62828; /* red */
+    }
+    #togglePubNameBtn:hover { 
+      background-color: #a81f1f; 
+    }
     #radiusDisplay { font-size: 1.2em; text-align: center; }
     #pubInputContainer {
       display: flex;
@@ -57,7 +69,7 @@
     }
     #suggestions {
       position: absolute;
-      top: 100%; /* directly below input */
+      top: 100%;
       left: 0;
       right: 0;
       background: white;
@@ -83,8 +95,10 @@
     <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
     <div id="suggestions"></div>
   </div>
-  <button id="togglePubNameBtn">Hide Pub Name</button>
+
   <button id="updateBtn">Set Pub Location</button>
+  <button id="togglePubNameBtn">Hide Pub Name</button>
+
   <button id="shrinkBtn">Shrink Radius</button>
   <span id="radiusDisplay">Radius: 2000 m</span>
 </div>
@@ -104,7 +118,7 @@ let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
-// Random center so pub is inside circle
+// Random center so pub is inside
 function getRandomCenter(pubLat, pubLng, radius) {
     let margin = 50;
     let maxDistance = Math.max(radius - margin, 1);
@@ -118,8 +132,16 @@ function getRandomCenter(pubLat, pubLng, radius) {
 // Draw/update circle
 function drawCircle() {
     if (circle) map.removeLayer(circle);
+
     let center = getRandomCenter(pubLat, pubLng, radius);
-    circle = L.circle(center, { color: 'red', fillColor: '#f94144', fillOpacity: 0.2, radius: radius }).addTo(map);
+
+    circle = L.circle(center, { 
+      color: 'red', 
+      fillColor: '#f94144', 
+      fillOpacity: 0.2, 
+      radius: radius 
+    }).addTo(map);
+
     map.setView([pubLat, pubLng], 14);
     document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m 🎅`;
 }
@@ -134,20 +156,26 @@ document.getElementById('shrinkBtn').addEventListener('click', () => {
     drawCircle();
 });
 
-// Toggle Pub Name input box
+// Toggle Pub Name + Set Button
 const toggleBtn = document.getElementById('togglePubNameBtn');
 const pubContainer = document.getElementById('pubInputContainer');
+const setBtn = document.getElementById('updateBtn');
+
 toggleBtn.addEventListener('click', () => {
-    if (pubContainer.style.display === 'none') {
+    const isHidden = pubContainer.style.display === 'none';
+
+    if (isHidden) {
         pubContainer.style.display = 'flex';
+        setBtn.style.display = 'block';
         toggleBtn.innerText = 'Hide Pub Name';
     } else {
         pubContainer.style.display = 'none';
+        setBtn.style.display = 'none';
         toggleBtn.innerText = 'Show Pub Name';
     }
 });
 
-// Nominatim autocomplete with debounce
+// Autocomplete
 const locationInput = document.getElementById('locationInput');
 const suggestionsDiv = document.getElementById('suggestions');
 let debounceTimer;
@@ -168,7 +196,7 @@ locationInput.addEventListener('input', () => {
                     div.innerText = place.display_name;
                     div.addEventListener('click', () => {
                         locationInput.value = place.display_name;
-                        suggestionsDiv.innerHTML = ''; // hide dropdown after selection
+                        suggestionsDiv.innerHTML = '';
                     });
                     suggestionsDiv.appendChild(div);
                 });
@@ -180,6 +208,7 @@ locationInput.addEventListener('input', () => {
 document.getElementById('updateBtn').addEventListener('click', () => {
     const query = locationInput.value;
     if (!query) return;
+
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
         .then(res => res.json())
         .then(results => {
