@@ -1,28 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Où est le Santa</title>
+  <title>Where's Santa?</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  
   <style>
-    #map { height: 80vh; width: 100%; margin-bottom: 10px; }
-    #controls { margin: 10px; }
-    input { width: 250px; margin-right: 5px; }
-    button { margin-right: 5px; }
+    html, body { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+    #map { height: 90vh; width: 100%; }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      gap: 10px;
+    }
+    input, button {
+      font-size: 1.1em;
+      padding: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #radiusDisplay {
+      font-size: 1.2em;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
 <div id="controls">
-  Location: <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
+  <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
   <button id="updateBtn">Set Pub Location</button>
   <button id="shrinkBtn">Shrink Radius</button>
+  <button id="toggleNameBtn">Hide Pub Name</button>
   <span id="radiusDisplay">Radius: 2000 m</span>
 </div>
 
 <div id="map"></div>
 
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 let map = L.map('map').setView([51.5074, -0.1278], 14);
@@ -34,6 +53,10 @@ let radius = 2000; // start at 2 km
 let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
+
+// Optional pub marker
+let pubMarker = L.marker([pubLat, pubLng]).addTo(map);
+let nameVisible = true;
 
 // Generate a random center so the pub is always inside
 function getRandomCenter(pubLat, pubLng, radius) {
@@ -60,6 +83,13 @@ function drawCircle() {
         fillOpacity: 0.2,
         radius: radius
     }).addTo(map);
+
+    // Update marker position if visible
+    if (nameVisible) {
+        pubMarker.setLatLng([pubLat, pubLng]).addTo(map);
+    } else {
+        map.removeLayer(pubMarker);
+    }
 
     map.setView([pubLat, pubLng], 14);
     document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m`;
@@ -95,9 +125,13 @@ document.getElementById('updateBtn').addEventListener('click', () => {
         })
         .catch(err => alert("Error fetching location: " + err));
 });
+
+// Toggle pub name visibility
+document.getElementById('toggleNameBtn').addEventListener('click', () => {
+    nameVisible = !nameVisible;
+    drawCircle();
+});
 </script>
 
 </body>
 </html>
-
-
