@@ -16,9 +16,9 @@
       padding: 0; 
       height: 100%; 
       font-family: 'Mountains of Christmas', cursive; 
-      background: #f0f8ff; /* light wintery background */
+      background: #f0f8ff;
     }
-    #map { height: 90vh; width: 100%; }
+    #map { height: 85vh; width: 100%; }
     #controls {
       display: flex;
       flex-direction: column;
@@ -42,11 +42,19 @@
       border-radius: 5px;
       transition: background 0.2s;
     }
-    #updateBtn { background-color: #d62828; } /* red */
+    #updateBtn { background-color: #d62828; }
     #updateBtn:hover { background-color: #a81f1f; }
-    #shrinkBtn { background-color: #2a9d8f; } /* greenish */
+    #shrinkBtn { background-color: #2a9d8f; }
     #shrinkBtn:hover { background-color: #21766f; }
+    #togglePubNameBtn { background-color: #f4a261; }
+    #togglePubNameBtn:hover { background-color: #d48c49; }
     #radiusDisplay { font-size: 1.2em; text-align: center; }
+    #pubInputContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      position: relative;
+    }
     #suggestions {
       position: absolute;
       background: white;
@@ -56,7 +64,7 @@
       width: 100%;
       top: 42px;
       z-index: 1000;
-      font-family: Arial, sans-serif; /* keep dropdown readable */
+      font-family: Arial, sans-serif;
     }
     .suggestion-item {
       padding: 8px;
@@ -70,8 +78,11 @@
 <body>
 
 <div id="controls">
-  <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
-  <div id="suggestions"></div>
+  <button id="togglePubNameBtn">Hide Pub Name</button>
+  <div id="pubInputContainer">
+    <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
+    <div id="suggestions"></div>
+  </div>
   <button id="updateBtn">Set Pub Location</button>
   <button id="shrinkBtn">Shrink Radius</button>
   <span id="radiusDisplay">Radius: 2000 m</span>
@@ -79,7 +90,6 @@
 
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
@@ -93,7 +103,6 @@ let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
-// Random center so pub is inside circle
 function getRandomCenter(pubLat, pubLng, radius) {
     let margin = 50;
     let maxDistance = Math.max(radius - margin, 1);
@@ -104,7 +113,6 @@ function getRandomCenter(pubLat, pubLng, radius) {
     return [centerLat, centerLng];
 }
 
-// Draw/update circle
 function drawCircle() {
     if (circle) map.removeLayer(circle);
     let center = getRandomCenter(pubLat, pubLng, radius);
@@ -123,7 +131,20 @@ document.getElementById('shrinkBtn').addEventListener('click', () => {
     drawCircle();
 });
 
-// Nominatim autocomplete with debounce
+// Toggle Pub Name input box
+const toggleBtn = document.getElementById('togglePubNameBtn');
+const pubContainer = document.getElementById('pubInputContainer');
+toggleBtn.addEventListener('click', () => {
+    if (pubContainer.style.display === 'none') {
+        pubContainer.style.display = 'flex';
+        toggleBtn.innerText = 'Hide Pub Name';
+    } else {
+        pubContainer.style.display = 'none';
+        toggleBtn.innerText = 'Show Pub Name';
+    }
+});
+
+// Nominatim autocomplete
 const locationInput = document.getElementById('locationInput');
 const suggestionsDiv = document.getElementById('suggestions');
 let debounceTimer;
@@ -144,40 +165,4 @@ locationInput.addEventListener('input', () => {
                     div.innerText = place.display_name;
                     div.addEventListener('click', () => {
                         locationInput.value = place.display_name;
-                        suggestionsDiv.innerHTML = ''; // clear dropdown when clicked
-                    });
-                    suggestionsDiv.appendChild(div);
-                });
-            }).catch(err => console.log(err));
-    }, 300); // 300ms debounce
-});
-
-// Set Pub Location button
-document.getElementById('updateBtn').addEventListener('click', () => {
-    const query = locationInput.value;
-    if (!query) return;
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
-        .then(res => res.json())
-        .then(results => {
-            if (results && results.length > 0) {
-                pubLat = parseFloat(results[0].lat);
-                pubLng = parseFloat(results[0].lon);
-                radius = 2000;
-                drawCircle();
-                suggestionsDiv.innerHTML = ''; // clear dropdown after setting pub
-            } else {
-                alert("Location not found");
-            }
-        }).catch(err => alert("Error fetching location: " + err));
-});
-
-// Hide suggestions if clicked outside
-document.addEventListener('click', (e) => {
-    if (!document.getElementById('controls').contains(e.target)) {
-        suggestionsDiv.innerHTML = '';
-    }
-});
-</script>
-
-</body>
-</html>
+                        // No
