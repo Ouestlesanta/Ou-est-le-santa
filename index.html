@@ -121,9 +121,16 @@ document.getElementById('updateBtn').addEventListener('click', () => {
         .catch(err => alert("Error fetching location: " + err));
 });
 
-// Save map button
+// Save map button (only map, without controls)
 document.getElementById('saveBtn').addEventListener('click', () => {
+    const controls = document.getElementById('controls');
+    // Temporarily hide controls
+    controls.style.display = 'none';
+
     leafletImage(map, function(err, canvas) {
+        // Restore controls immediately
+        controls.style.display = 'flex';
+
         if (err) { alert("Error generating image: " + err); return; }
         const img = canvas.toDataURL("image/png");
         const link = document.createElement('a');
