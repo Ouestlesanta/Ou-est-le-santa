@@ -24,6 +24,7 @@
       box-sizing: border-box;
     }
     #radiusDisplay { font-size: 1.2em; text-align: center; }
+    /* dropdown styling */
     #suggestions {
       position: absolute;
       background: white;
@@ -31,6 +32,7 @@
       max-height: 150px;
       overflow-y: auto;
       width: 100%;
+      top: 42px; /* height of input + small margin */
       z-index: 1000;
     }
     .suggestion-item {
@@ -98,16 +100,34 @@ document.getElementById('shrinkBtn').addEventListener('click', () => {
     drawCircle();
 });
 
-// Save map (mobile-friendly)
+// Save map button
 document.getElementById('saveBtn').addEventListener('click', () => {
     const controls = document.getElementById('controls');
     controls.style.display = 'none';
+
     leafletImage(map, function(err, canvas) {
         controls.style.display = 'flex';
         if (err) { alert("Error generating image: " + err); return; }
-        const img = canvas.toDataURL("image/png");
-        // Mobile: open in new tab
-        window.open(img, '_blank');
+
+        canvas.toBlob(function(blob) {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const url = URL.createObjectURL(blob);
+
+            if (isMobile) {
+                // open in new tab for mobile (long press → save)
+                window.open(url, '_blank');
+            } else {
+                // force download on desktop
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'map.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            URL.revokeObjectURL(url);
+        });
     });
 });
 
