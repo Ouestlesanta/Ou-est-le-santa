@@ -1,19 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Find the Pub Radius</title>
+  <title>Ou est le Santa?</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
+  <!-- Christmas font from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
+
   <style>
     body {
       margin: 0;
+      background: #d9d9d9; /* Festive grey background */
       font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
+    }
+
+    header {
+      text-align: center;
+      padding: 10px;
+      font-family: 'Mountains of Christmas', cursive;
+      font-size: 2em;
+      color: #b91c1c;
+    }
+
+    #logo {
+      display: block;
+      margin: 0 auto;
+      width: 120px;
     }
 
     #map {
@@ -23,7 +39,8 @@
 
     #controls {
       padding: 10px;
-      background: #162033;
+      background: #f0f0f0;
+      color: black;
     }
 
     input {
@@ -31,8 +48,9 @@
       padding: 10px;
       font-size: 16px;
       border-radius: 6px;
-      border: none;
+      border: 1px solid #ccc;
       margin-bottom: 5px;
+      font-family: Arial, sans-serif;
     }
 
     button {
@@ -46,20 +64,9 @@
       cursor: pointer;
     }
 
-    #updateBtn {
-      background: #333;
-      color: white;
-    }
-
-    #togglePubBtn {
-      background: #b91c1c;
-      color: white;
-    }
-
-    #shrinkBtn {
-      background: #16a34a;
-      color: white;
-    }
+    #updateBtn { background: #333; color: white; }
+    #togglePubBtn { background: #b91c1c; color: white; }
+    #shrinkBtn { background: #16a34a; color: white; }
 
     #radiusDisplay {
       display: block;
@@ -95,9 +102,13 @@
 </head>
 <body>
 
+<header>
+  <img src="https://i.imgur.com/9U9w3YK.png" id="logo" alt="Santa Logo">
+  Ou est le Santa?
+</header>
+
 <div id="controls">
   <input id="locationInput" placeholder="Type a pub name or address…" />
-
   <div id="suggestions"></div>
 
   <button id="updateBtn">Set Pub Location</button>
@@ -109,9 +120,7 @@
 
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
 <script>
 let map = L.map('map').setView([51.5074, -0.1278], 14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -129,7 +138,7 @@ let input = document.getElementById("locationInput");
 let suggestions = document.getElementById("suggestions");
 let pubBoxVisible = true;
 
-// Get random center that guarantees pub inside circle
+// Random center ensuring pub inside circle
 function getRandomCenter(pubLat, pubLng, radius) {
   let angle = Math.random() * 2 * Math.PI;
   let distance = Math.random() * (radius - 10);
@@ -204,6 +213,8 @@ input.addEventListener("input", () => {
             radius = 2000;
             circleCenter = null;
             drawCircle();
+
+            suggestions.innerHTML = ""; // Hide dropdown on selection
           };
           suggestions.appendChild(div);
         });
