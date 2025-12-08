@@ -5,7 +5,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   
   <style>
@@ -16,6 +15,7 @@
       flex-direction: column;
       padding: 10px;
       gap: 10px;
+      position: relative;
     }
     input, button {
       font-size: 1.1em;
@@ -23,9 +23,22 @@
       width: 100%;
       box-sizing: border-box;
     }
-    #radiusDisplay {
-      font-size: 1.2em;
-      text-align: center;
+    #radiusDisplay { font-size: 1.2em; text-align: center; }
+    #suggestions {
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      max-height: 150px;
+      overflow-y: auto;
+      width: 100%;
+      z-index: 1000;
+    }
+    .suggestion-item {
+      padding: 8px;
+      cursor: pointer;
+    }
+    .suggestion-item:hover {
+      background: #eee;
     }
   </style>
 </head>
@@ -33,7 +46,7 @@
 
 <div id="controls">
   <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
-  <button id="updateBtn">Set Pub Location</button>
+  <div id="suggestions"></div>
   <button id="shrinkBtn">Shrink Radius</button>
   <button id="saveBtn">Save Map</button>
   <span id="radiusDisplay">Radius: 2000 m</span>
@@ -41,9 +54,7 @@
 
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<!-- Leaflet Image plugin for exporting map -->
 <script src="https://rawcdn.githack.com/mapbox/leaflet-image/gh-pages/leaflet-image.js"></script>
 
 <script>
@@ -52,41 +63,27 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-let radius = 2000; // start at 2 km
+let radius = 2000;
 let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
-// Pub marker
-let pubMarker = L.marker([pubLat, pubLng]).addTo(map);
-
-// Generate a random center so the pub is always inside
+// Random center so pub is inside circle
 function getRandomCenter(pubLat, pubLng, radius) {
-    let margin = 50; // safety buffer
-    let maxDistance = Math.max(radius - margin, 1); // never negative or zero
+    let margin = 50;
+    let maxDistance = Math.max(radius - margin, 1);
     let angle = Math.random() * 2 * Math.PI;
     let distance = Math.random() * maxDistance;
-
     let centerLat = pubLat + (distance / 111000) * Math.cos(angle);
     let centerLng = pubLng + (distance / 111000) * Math.sin(angle) / Math.cos(pubLat * Math.PI / 180);
-
     return [centerLat, centerLng];
 }
 
-// Draw or update the circle
+// Draw/update circle
 function drawCircle() {
     if (circle) map.removeLayer(circle);
-
     let center = getRandomCenter(pubLat, pubLng, radius);
-
-    circle = L.circle(center, {
-        color: 'blue',
-        fillColor: '#30f',
-        fillOpacity: 0.2,
-        radius: radius
-    }).addTo(map);
-
-    pubMarker.setLatLng([pubLat, pubLng]);
+    circle = L.circle(center, { color: 'blue', fillColor: '#30f', fillOpacity: 0.2, radius: radius }).addTo(map);
     map.setView([pubLat, pubLng], 14);
     document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m`;
 }
@@ -94,52 +91,60 @@ function drawCircle() {
 // Initial draw
 drawCircle();
 
-// Shrink radius by 25% on button click
+// Shrink radius
 document.getElementById('shrinkBtn').addEventListener('click', () => {
     radius *= 0.75;
     if (radius < 1) radius = 1;
     drawCircle();
 });
 
-// Update pub location using a search string
-document.getElementById('updateBtn').addEventListener('click', () => {
-    const location = document.getElementById('locationInput').value;
-    if (!location) return;
-
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data && data.length > 0) {
-                pubLat = parseFloat(data[0].lat);
-                pubLng = parseFloat(data[0].lon);
-                radius = 2000; // reset radius
-                drawCircle();
-            } else {
-                alert("Location not found.");
-            }
-        })
-        .catch(err => alert("Error fetching location: " + err));
-});
-
-// Save map button (only map, without controls)
+// Save map (mobile-friendly)
 document.getElementById('saveBtn').addEventListener('click', () => {
     const controls = document.getElementById('controls');
-    // Temporarily hide controls
     controls.style.display = 'none';
-
     leafletImage(map, function(err, canvas) {
-        // Restore controls immediately
         controls.style.display = 'flex';
-
         if (err) { alert("Error generating image: " + err); return; }
         const img = canvas.toDataURL("image/png");
-        const link = document.createElement('a');
-        link.href = img;
-        link.download = 'map.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Mobile: open in new tab
+        window.open(img, '_blank');
     });
+});
+
+// Nominatim autocomplete
+const locationInput = document.getElementById('locationInput');
+const suggestionsDiv = document.getElementById('suggestions');
+
+locationInput.addEventListener('input', () => {
+    const query = locationInput.value;
+    if (query.length < 2) { suggestionsDiv.innerHTML = ''; return; }
+
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+        .then(res => res.json())
+        .then(results => {
+            suggestionsDiv.innerHTML = '';
+            results.forEach(place => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerText = place.display_name;
+                div.addEventListener('click', () => {
+                    pubLat = parseFloat(place.lat);
+                    pubLng = parseFloat(place.lon);
+                    radius = 2000;
+                    drawCircle();
+                    suggestionsDiv.innerHTML = '';
+                    locationInput.value = place.display_name;
+                });
+                suggestionsDiv.appendChild(div);
+            });
+        }).catch(err => console.log(err));
+});
+
+// Hide suggestions if clicked outside
+document.addEventListener('click', (e) => {
+    if (!document.getElementById('controls').contains(e.target)) {
+        suggestionsDiv.innerHTML = '';
+    }
 });
 </script>
 
