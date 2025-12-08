@@ -8,28 +8,14 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-  <!-- Christmas font from Google Fonts -->
+  <!-- Christmas font for buttons and radius -->
   <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
 
   <style>
     body {
       margin: 0;
-      background: #d9d9d9; /* Festive grey background */
+      background: #d9d9d9; /* Festive grey */
       font-family: Arial, sans-serif;
-    }
-
-    header {
-      text-align: center;
-      padding: 10px;
-      font-family: 'Mountains of Christmas', cursive;
-      font-size: 2em;
-      color: #b91c1c;
-    }
-
-    #logo {
-      display: block;
-      margin: 0 auto;
-      width: 120px;
     }
 
     #map {
@@ -50,7 +36,7 @@
       border-radius: 6px;
       border: 1px solid #ccc;
       margin-bottom: 5px;
-      font-family: Arial, sans-serif;
+      font-family: Arial, sans-serif; /* keep input font normal */
     }
 
     button {
@@ -62,6 +48,7 @@
       border: none;
       font-weight: bold;
       cursor: pointer;
+      font-family: 'Mountains of Christmas', cursive; /* festive font for buttons */
     }
 
     #updateBtn { background: #333; color: white; }
@@ -69,10 +56,19 @@
     #shrinkBtn { background: #16a34a; color: white; }
 
     #radiusDisplay {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       margin-top: 8px;
       font-weight: bold;
-      text-align: center;
+      font-size: 18px;
+      font-family: 'Mountains of Christmas', cursive; /* festive font */
+    }
+
+    #radiusDisplay img {
+      width: 24px;
+      height: 24px;
+      margin-left: 5px;
     }
 
     #suggestions {
@@ -102,11 +98,6 @@
 </head>
 <body>
 
-<header>
-  <img src="https://i.imgur.com/9U9w3YK.png" id="logo" alt="Santa Logo">
-  Ou est le Santa?
-</header>
-
 <div id="controls">
   <input id="locationInput" placeholder="Type a pub name or address…" />
   <div id="suggestions"></div>
@@ -115,7 +106,9 @@
   <button id="togglePubBtn">Hide Pub Name</button>
   <button id="shrinkBtn">Shrink Radius</button>
 
-  <span id="radiusDisplay">Radius: 2000 m</span>
+  <span id="radiusDisplay">
+    Radius: 2000 m <img src="https://i.imgur.com/Oi2nQxJ.png" alt="Santa Icon">
+  </span>
 </div>
 
 <div id="map"></div>
@@ -184,7 +177,13 @@ function drawCircle() {
   map.fitBounds(circle.getBounds(), { padding: [40, 40] });
 
   document.getElementById("radiusDisplay").innerText =
-    `Radius: ${Math.round(radius)} m`;
+    `Radius: ${Math.round(radius)} m `;
+  
+  // Add Santa icon
+  let img = document.createElement("img");
+  img.src = "https://i.imgur.com/Oi2nQxJ.png";
+  img.alt = "Santa Icon";
+  document.getElementById("radiusDisplay").appendChild(img);
 }
 
 // Nominatim live search
@@ -214,7 +213,7 @@ input.addEventListener("input", () => {
             circleCenter = null;
             drawCircle();
 
-            suggestions.innerHTML = ""; // Hide dropdown on selection
+            suggestions.innerHTML = ""; // Hide dropdown
           };
           suggestions.appendChild(div);
         });
