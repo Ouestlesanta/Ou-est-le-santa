@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Leaflet Shrinking Radius with Location Search</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    #map { height: 80vh; width: 100%; margin-bottom: 10px; }
+    #controls { margin: 10px; }
+    input { width: 250px; margin-right: 5px; }
+    button { margin-right: 5px; }
+  </style>
+</head>
+<body>
+
+<div id="controls">
+  Location: <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
+  <button id="updateBtn">Set Pub Location</button>
+  <button id="shrinkBtn">Shrink Radius</button>
+  <span id="radiusDisplay">Radius: 2000 m</span>
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+let map = L.map('map').setView([51.5074, -0.1278], 14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+let radius = 2000; // start at 2 km
+let circle;
+let pubLat = 51.5074;
+let pubLng = -0.1278;
+
+// Generate a random center so the pub is always inside
+function getRandomCenter(pubLat, pubLng, radius) {
+    let margin = 50; // safety buffer
+    let maxDistance = Math.max(radius - margin, 1); // never negative or zero
+    let angle = Math.random() * 2 * Math.PI;
+    let distance = Math.random() * maxDistance;
+
+    let centerLat = pubLat + (distance / 111000) * Math.cos(angle);
+    let centerLng = pubLng + (distance / 111000) * Math.sin(angle) / Math.cos(pubLat * Math.PI / 180);
+
+    return [centerLat, centerLng];
+}
+
+// Draw or update the circle
+function drawCircle() {
+    if (circle) map.removeLayer(circle);
+
+    let center = getRandomCenter(pubLat, pubLng, radius);
+
+    circle = L.circle(center, {
+        color: 'blue',
+        fillColor: '#30f',
+        fillOpacity: 0.2,
+        radius: radius
+    }).addTo(map);
+
+    map.setView([pubLat, pubLng], 14);
+    document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m`;
+}
+
+// Initial draw
+drawCircle();
+
+// Shrink radius by 25% on button click
+document.getElementById('shrinkBtn').addEventListener('click', () => {
+    radius *= 0.75; // reduce by 25%
+    if (radius < 1) radius = 1; // minimum 1 meter
+    drawCircle();
+});
+
+// Update pub location using a search string
+document.getElementById('updateBtn').addEventListener('click', () => {
+    const location = document.getElementById('locationInput').value;
+    if (!location) return;
+
+    // Use OpenStreetMap Nominatim API to geocode
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                pubLat = parseFloat(data[0].lat);
+                pubLng = parseFloat(data[0].lon);
+                radius = 2000; // reset radius
+                drawCircle();
+            } else {
+                alert("Location not found.");
+            }
+        })
+        .catch(err => alert("Error fetching location: " + err));
+});
+</script>
+
+</body>
+</html>
