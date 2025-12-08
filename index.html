@@ -1,15 +1,12 @@
-<!DOCTYPE html>
-<html>
 <head>
-  <title>Where's Santa?</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  
+  <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
-    #map { height: 90vh; width: 100%; }
+    html, body { 
+      margin: 0; 
+      padding: 0; 
+      height: 100%; 
+      font-family: 'Mountains of Christmas', cursive; 
+    }
     #controls {
       display: flex;
       flex-direction: column;
@@ -17,145 +14,37 @@
       gap: 10px;
       position: relative;
     }
-    input, button {
+    input {
       font-size: 1.1em;
       padding: 10px;
       width: 100%;
       box-sizing: border-box;
     }
-    #radiusDisplay { font-size: 1.2em; text-align: center; }
-    #suggestions {
-      position: absolute;
-      background: white;
-      border: 1px solid #ccc;
-      max-height: 150px;
-      overflow-y: auto;
+    button {
+      font-size: 1.1em;
+      padding: 10px;
       width: 100%;
-      top: 42px;
-      z-index: 1000;
-    }
-    .suggestion-item {
-      padding: 8px;
+      border: none;
+      color: white;
       cursor: pointer;
+      border-radius: 5px;
+      transition: background 0.2s;
     }
-    .suggestion-item:hover {
-      background: #eee;
+    #updateBtn {
+      background-color: #d62828; /* red */
+    }
+    #updateBtn:hover {
+      background-color: #a81f1f; /* darker red */
+    }
+    #shrinkBtn {
+      background-color: #2a9d8f; /* greenish */
+    }
+    #shrinkBtn:hover {
+      background-color: #21766f; /* darker green */
+    }
+    #radiusDisplay { 
+      font-size: 1.2em; 
+      text-align: center; 
     }
   </style>
 </head>
-<body>
-
-<div id="controls">
-  <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
-  <div id="suggestions"></div>
-  <button id="updateBtn">Set Pub Location</button>
-  <button id="shrinkBtn">Shrink Radius</button>
-  <span id="radiusDisplay">Radius: 2000 m</span>
-</div>
-
-<div id="map"></div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-<script>
-let map = L.map('map').setView([51.5074, -0.1278], 14);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
-
-let radius = 2000;
-let circle;
-let pubLat = 51.5074;
-let pubLng = -0.1278;
-
-// Random center so pub is inside circle
-function getRandomCenter(pubLat, pubLng, radius) {
-    let margin = 50;
-    let maxDistance = Math.max(radius - margin, 1);
-    let angle = Math.random() * 2 * Math.PI;
-    let distance = Math.random() * maxDistance;
-    let centerLat = pubLat + (distance / 111000) * Math.cos(angle);
-    let centerLng = pubLng + (distance / 111000) * Math.sin(angle) / Math.cos(pubLat * Math.PI / 180);
-    return [centerLat, centerLng];
-}
-
-// Draw/update circle
-function drawCircle() {
-    if (circle) map.removeLayer(circle);
-    let center = getRandomCenter(pubLat, pubLng, radius);
-    circle = L.circle(center, { color: 'blue', fillColor: '#30f', fillOpacity: 0.2, radius: radius }).addTo(map);
-    map.setView([pubLat, pubLng], 14);
-    document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m`;
-}
-
-// Initial draw
-drawCircle();
-
-// Shrink radius
-document.getElementById('shrinkBtn').addEventListener('click', () => {
-    radius *= 0.75;
-    if (radius < 1) radius = 1;
-    drawCircle();
-});
-
-// Nominatim autocomplete with debounce
-const locationInput = document.getElementById('locationInput');
-const suggestionsDiv = document.getElementById('suggestions');
-let debounceTimer;
-
-locationInput.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    const query = locationInput.value;
-    if (query.length < 2) { suggestionsDiv.innerHTML = ''; return; }
-
-    debounceTimer = setTimeout(() => {
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
-            .then(res => res.json())
-            .then(results => {
-                suggestionsDiv.innerHTML = '';
-                results.forEach(place => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.innerText = place.display_name;
-                    div.addEventListener('click', () => {
-                        locationInput.value = place.display_name;
-                        pubLat = parseFloat(place.lat);
-                        pubLng = parseFloat(place.lon);
-                        radius = 2000;
-                        drawCircle();
-                        suggestionsDiv.innerHTML = '';
-                    });
-                    suggestionsDiv.appendChild(div);
-                });
-            }).catch(err => console.log(err));
-    }, 300); // wait 300ms after typing stops
-});
-
-// Set Pub Location button
-document.getElementById('updateBtn').addEventListener('click', () => {
-    const query = locationInput.value;
-    if (!query) return;
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
-        .then(res => res.json())
-        .then(results => {
-            if (results && results.length > 0) {
-                pubLat = parseFloat(results[0].lat);
-                pubLng = parseFloat(results[0].lon);
-                radius = 2000;
-                drawCircle();
-            } else {
-                alert("Location not found");
-            }
-        }).catch(err => alert("Error fetching location: " + err));
-});
-
-// Hide suggestions if clicked outside
-document.addEventListener('click', (e) => {
-    if (!document.getElementById('controls').contains(e.target)) {
-        suggestionsDiv.innerHTML = '';
-    }
-});
-</script>
-
-</body>
-</html>
