@@ -35,7 +35,7 @@
   <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
   <button id="updateBtn">Set Pub Location</button>
   <button id="shrinkBtn">Shrink Radius</button>
-  <button id="toggleNameBtn">Hide Pub Name</button>
+  <button id="saveBtn">Save Map</button>
   <span id="radiusDisplay">Radius: 2000 m</span>
 </div>
 
@@ -43,6 +43,9 @@
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<!-- Leaflet Image plugin for exporting map -->
+<script src="https://rawcdn.githack.com/mapbox/leaflet-image/gh-pages/leaflet-image.js"></script>
+
 <script>
 let map = L.map('map').setView([51.5074, -0.1278], 14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -54,9 +57,8 @@ let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
-// Optional pub marker
+// Pub marker
 let pubMarker = L.marker([pubLat, pubLng]).addTo(map);
-let nameVisible = true;
 
 // Generate a random center so the pub is always inside
 function getRandomCenter(pubLat, pubLng, radius) {
@@ -84,13 +86,7 @@ function drawCircle() {
         radius: radius
     }).addTo(map);
 
-    // Update marker position if visible
-    if (nameVisible) {
-        pubMarker.setLatLng([pubLat, pubLng]).addTo(map);
-    } else {
-        map.removeLayer(pubMarker);
-    }
-
+    pubMarker.setLatLng([pubLat, pubLng]);
     map.setView([pubLat, pubLng], 14);
     document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m`;
 }
@@ -100,8 +96,8 @@ drawCircle();
 
 // Shrink radius by 25% on button click
 document.getElementById('shrinkBtn').addEventListener('click', () => {
-    radius *= 0.75; // reduce by 25%
-    if (radius < 1) radius = 1; // minimum 1 meter
+    radius *= 0.75;
+    if (radius < 1) radius = 1;
     drawCircle();
 });
 
@@ -110,7 +106,6 @@ document.getElementById('updateBtn').addEventListener('click', () => {
     const location = document.getElementById('locationInput').value;
     if (!location) return;
 
-    // Use OpenStreetMap Nominatim API to geocode
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`)
         .then(response => response.json())
         .then(data => {
@@ -126,10 +121,18 @@ document.getElementById('updateBtn').addEventListener('click', () => {
         .catch(err => alert("Error fetching location: " + err));
 });
 
-// Toggle pub name visibility
-document.getElementById('toggleNameBtn').addEventListener('click', () => {
-    nameVisible = !nameVisible;
-    drawCircle();
+// Save map button
+document.getElementById('saveBtn').addEventListener('click', () => {
+    leafletImage(map, function(err, canvas) {
+        if (err) { alert("Error generating image: " + err); return; }
+        const img = canvas.toDataURL("image/png");
+        const link = document.createElement('a');
+        link.href = img;
+        link.download = 'map.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
 });
 </script>
 
