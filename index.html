@@ -11,11 +11,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-    html, body { 
-      margin: 0; 
-      padding: 0; 
-      height: 100%; 
-      font-family: 'Mountains of Christmas', cursive; 
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Mountains of Christmas', cursive;
       background: #f0f8ff;
     }
     #map { height: 85vh; width: 100%; }
@@ -87,7 +87,6 @@
 
   <button id="updateBtn">Set Pub Location</button>
   <button id="togglePubNameBtn">Hide Pub Name</button>
-
   <button id="shrinkBtn">Shrink Radius</button>
   <span id="radiusDisplay">Radius: 2000 m</span>
 </div>
@@ -95,11 +94,10 @@
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
 <script>
 let map = L.map('map').setView([51.5074, -0.1278], 14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+  attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
 let radius = 2000;
@@ -107,61 +105,65 @@ let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
-function getRandomCenter(pubLat, pubLng, radius) {
-    let margin = 50;
-    let maxDistance = Math.max(radius - margin, 1);
-    let angle = Math.random() * 2 * Math.PI;
-    let distance = Math.random() * maxDistance;
-    let centerLat = pubLat + (distance / 111000) * Math.cos(angle);
-    let centerLng = pubLng + (distance / 111000) * Math.sin(angle) / Math.cos(pubLat * Math.PI / 180);
-    return [centerLat, centerLng];
+// FIXED circle centre
+let circleCenter = null;
+
+// Create a random centre ONCE
+function createFixedCenter(lat, lng, radius) {
+  let margin = 50;
+  let maxDistance = Math.max(radius - margin, 1);
+  let angle = Math.random() * 2 * Math.PI;
+  let distance = Math.random() * maxDistance;
+  let centerLat = lat + (distance / 111000) * Math.cos(angle);
+  let centerLng = lng + (distance / 111000) * Math.sin(angle) / Math.cos(lat * Math.PI / 180);
+  return [centerLat, centerLng];
 }
 
 function drawCircle() {
-    if (circle) map.removeLayer(circle);
+  if (!circleCenter) {
+    circleCenter = createFixedCenter(pubLat, pubLng, radius);
+  }
 
-    let center = getRandomCenter(pubLat, pubLng, radius);
+  if (circle) map.removeLayer(circle);
 
-    circle = L.circle(center, { 
-      color: 'red', 
-      fillColor: '#f94144', 
-      fillOpacity: 0.2, 
-      radius: radius 
-    }).addTo(map);
+  circle = L.circle(circleCenter, {
+    color: 'red',
+    fillColor: '#f94144',
+    fillOpacity: 0.2,
+    radius: radius
+  }).addTo(map);
 
-    // Fit view to circle instead of forcing zoom level
-    map.fitBounds(circle.getBounds(), { padding: [30, 30] });
+  map.fitBounds(circle.getBounds(), { padding: [30, 30] });
 
-    document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m 🎅`;
+  document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m 🎅`;
 }
 
 // Initial draw
 drawCircle();
 
-// Shrink radius
+// Shrink radius (does NOT change centre)
 document.getElementById('shrinkBtn').addEventListener('click', () => {
-    radius *= 0.75;
-    if (radius < 1) radius = 1;
-    drawCircle();
+  radius *= 0.75;
+  if (radius < 1) radius = 1;
+  drawCircle();
 });
 
-// Toggle Pub Name + Set Button
+// Hide/Show pub name + set button
 const toggleBtn = document.getElementById('togglePubNameBtn');
 const pubContainer = document.getElementById('pubInputContainer');
 const setBtn = document.getElementById('updateBtn');
 
 toggleBtn.addEventListener('click', () => {
-    const isHidden = pubContainer.style.display === 'none';
-
-    if (isHidden) {
-        pubContainer.style.display = 'flex';
-        setBtn.style.display = 'block';
-        toggleBtn.innerText = 'Hide Pub Name';
-    } else {
-        pubContainer.style.display = 'none';
-        setBtn.style.display = 'none';
-        toggleBtn.innerText = 'Show Pub Name';
-    }
+  const isHidden = pubContainer.style.display === 'none';
+  if (isHidden) {
+    pubContainer.style.display = 'flex';
+    setBtn.style.display = 'block';
+    toggleBtn.innerText = 'Hide Pub Name';
+  } else {
+    pubContainer.style.display = 'none';
+    setBtn.style.display = 'none';
+    toggleBtn.innerText = 'Show Pub Name';
+  }
 });
 
 // Autocomplete
@@ -170,48 +172,52 @@ const suggestionsDiv = document.getElementById('suggestions');
 let debounceTimer;
 
 locationInput.addEventListener('input', () => {
-    clearTimeout(debounceTimer);
-    const query = locationInput.value;
-    if (query.length < 2) { suggestionsDiv.innerHTML = ''; return; }
+  clearTimeout(debounceTimer);
+  const query = locationInput.value;
 
-    debounceTimer = setTimeout(() => {
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
-            .then(res => res.json())
-            .then(results => {
-                suggestionsDiv.innerHTML = '';
-                results.forEach(place => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion-item';
-                    div.innerText = place.display_name;
-                    div.addEventListener('click', () => {
-                        locationInput.value = place.display_name;
-                        suggestionsDiv.innerHTML = '';
-                    });
-                    suggestionsDiv.appendChild(div);
-                });
-            }).catch(err => console.log(err));
-    }, 300);
+  if (query.length < 2) {
+    suggestionsDiv.innerHTML = '';
+    return;
+  }
+
+  debounceTimer = setTimeout(() => {
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+      .then(res => res.json())
+      .then(results => {
+        suggestionsDiv.innerHTML = '';
+        results.forEach(place => {
+          const div = document.createElement('div');
+          div.className = 'suggestion-item';
+          div.innerText = place.display_name;
+          div.addEventListener('click', () => {
+            locationInput.value = place.display_name;
+            suggestionsDiv.innerHTML = '';
+          });
+          suggestionsDiv.appendChild(div);
+        });
+      }).catch(err => console.log(err));
+  }, 300);
 });
 
-// Set Pub Location
+// Set pub location (resets centre)
 document.getElementById('updateBtn').addEventListener('click', () => {
-    const query = locationInput.value;
-    if (!query) return;
+  const query = locationInput.value;
+  if (!query) return;
 
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
-        .then(res => res.json())
-        .then(results => {
-            if (results && results.length > 0) {
-                pubLat = parseFloat(results[0].lat);
-                pubLng = parseFloat(results[0].lon);
-                radius = 2000;
-                drawCircle();
-            } else {
-                alert("Location not found");
-            }
-        }).catch(err => alert("Error fetching location: " + err));
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
+    .then(res => res.json())
+    .then(results => {
+      if (results && results.length > 0) {
+        pubLat = parseFloat(results[0].lat);
+        pubLng = parseFloat(results[0].lon);
+        radius = 2000;
+        circleCenter = null; // force new random centre
+        drawCircle();
+      } else {
+        alert("Location not found");
+      }
+    }).catch(err => alert("Error fetching location: " + err));
 });
 </script>
-
 </body>
 </html>
