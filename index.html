@@ -165,4 +165,33 @@ locationInput.addEventListener('input', () => {
                     div.innerText = place.display_name;
                     div.addEventListener('click', () => {
                         locationInput.value = place.display_name;
-                        // No
+                        // No clearing of suggestions here
+                    });
+                    suggestionsDiv.appendChild(div);
+                });
+            }).catch(err => console.log(err));
+    }, 300);
+});
+
+// Set Pub Location
+document.getElementById('updateBtn').addEventListener('click', () => {
+    const query = locationInput.value;
+    if (!query) return;
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
+        .then(res => res.json())
+        .then(results => {
+            if (results && results.length > 0) {
+                pubLat = parseFloat(results[0].lat);
+                pubLng = parseFloat(results[0].lon);
+                radius = 2000;
+                drawCircle();
+                // no clearing of suggestions
+            } else {
+                alert("Location not found");
+            }
+        }).catch(err => alert("Error fetching location: " + err));
+});
+</script>
+
+</body>
+</html>
