@@ -8,7 +8,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-  <!-- Christmas font for buttons and radius -->
+  <!-- Christmas font for radius -->
   <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
 
   <style>
@@ -36,7 +36,7 @@
       border-radius: 6px;
       border: 1px solid #ccc;
       margin-bottom: 5px;
-      font-family: Arial, sans-serif; /* keep input font normal */
+      font-family: Arial, sans-serif; /* normal font for input */
     }
 
     button {
@@ -48,7 +48,7 @@
       border: none;
       font-weight: bold;
       cursor: pointer;
-      font-family: 'Mountains of Christmas', cursive; /* festive font for buttons */
+      font-family: Arial, sans-serif; /* reset button font */
     }
 
     #updateBtn { background: #333; color: white; }
@@ -63,12 +63,6 @@
       font-weight: bold;
       font-size: 18px;
       font-family: 'Mountains of Christmas', cursive; /* festive font */
-    }
-
-    #radiusDisplay img {
-      width: 24px;
-      height: 24px;
-      margin-left: 5px;
     }
 
     #suggestions {
@@ -107,7 +101,7 @@
   <button id="shrinkBtn">Shrink Radius</button>
 
   <span id="radiusDisplay">
-    Radius: 2000 m <img src="https://i.imgur.com/Oi2nQxJ.png" alt="Santa Icon">
+    Radius: 2000 m 🎅
   </span>
 </div>
 
@@ -177,13 +171,7 @@ function drawCircle() {
   map.fitBounds(circle.getBounds(), { padding: [40, 40] });
 
   document.getElementById("radiusDisplay").innerText =
-    `Radius: ${Math.round(radius)} m `;
-  
-  // Add Santa icon
-  let img = document.createElement("img");
-  img.src = "https://i.imgur.com/Oi2nQxJ.png";
-  img.alt = "Santa Icon";
-  document.getElementById("radiusDisplay").appendChild(img);
+    `Radius: ${Math.round(radius)} m 🎅`;
 }
 
 // Nominatim live search
@@ -212,7 +200,6 @@ input.addEventListener("input", () => {
             radius = 2000;
             circleCenter = null;
             drawCircle();
-
             suggestions.innerHTML = ""; // Hide dropdown
           };
           suggestions.appendChild(div);
