@@ -24,7 +24,6 @@
       box-sizing: border-box;
     }
     #radiusDisplay { font-size: 1.2em; text-align: center; }
-    /* dropdown styling */
     #suggestions {
       position: absolute;
       background: white;
@@ -32,7 +31,7 @@
       max-height: 150px;
       overflow-y: auto;
       width: 100%;
-      top: 42px; /* height of input + small margin */
+      top: 42px;
       z-index: 1000;
     }
     .suggestion-item {
@@ -49,15 +48,14 @@
 <div id="controls">
   <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
   <div id="suggestions"></div>
+  <button id="updateBtn">Set Pub Location</button>
   <button id="shrinkBtn">Shrink Radius</button>
-  <button id="saveBtn">Save Map</button>
   <span id="radiusDisplay">Radius: 2000 m</span>
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://rawcdn.githack.com/mapbox/leaflet-image/gh-pages/leaflet-image.js"></script>
 
 <script>
 let map = L.map('map').setView([51.5074, -0.1278], 14);
@@ -100,64 +98,55 @@ document.getElementById('shrinkBtn').addEventListener('click', () => {
     drawCircle();
 });
 
-// Save map button
-document.getElementById('saveBtn').addEventListener('click', () => {
-    const controls = document.getElementById('controls');
-    controls.style.display = 'none';
-
-    leafletImage(map, function(err, canvas) {
-        controls.style.display = 'flex';
-        if (err) { alert("Error generating image: " + err); return; }
-
-        canvas.toBlob(function(blob) {
-            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            const url = URL.createObjectURL(blob);
-
-            if (isMobile) {
-                // open in new tab for mobile (long press → save)
-                window.open(url, '_blank');
-            } else {
-                // force download on desktop
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = 'map.png';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-
-            URL.revokeObjectURL(url);
-        });
-    });
-});
-
-// Nominatim autocomplete
+// Nominatim autocomplete with debounce
 const locationInput = document.getElementById('locationInput');
 const suggestionsDiv = document.getElementById('suggestions');
+let debounceTimer;
 
 locationInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
     const query = locationInput.value;
     if (query.length < 2) { suggestionsDiv.innerHTML = ''; return; }
 
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+    debounceTimer = setTimeout(() => {
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
+            .then(res => res.json())
+            .then(results => {
+                suggestionsDiv.innerHTML = '';
+                results.forEach(place => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion-item';
+                    div.innerText = place.display_name;
+                    div.addEventListener('click', () => {
+                        locationInput.value = place.display_name;
+                        pubLat = parseFloat(place.lat);
+                        pubLng = parseFloat(place.lon);
+                        radius = 2000;
+                        drawCircle();
+                        suggestionsDiv.innerHTML = '';
+                    });
+                    suggestionsDiv.appendChild(div);
+                });
+            }).catch(err => console.log(err));
+    }, 300); // wait 300ms after typing stops
+});
+
+// Set Pub Location button
+document.getElementById('updateBtn').addEventListener('click', () => {
+    const query = locationInput.value;
+    if (!query) return;
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
         .then(res => res.json())
         .then(results => {
-            suggestionsDiv.innerHTML = '';
-            results.forEach(place => {
-                const div = document.createElement('div');
-                div.className = 'suggestion-item';
-                div.innerText = place.display_name;
-                div.addEventListener('click', () => {
-                    pubLat = parseFloat(place.lat);
-                    pubLng = parseFloat(place.lon);
-                    radius = 2000;
-                    drawCircle();
-                    suggestionsDiv.innerHTML = '';
-                    locationInput.value = place.display_name;
-                });
-                suggestionsDiv.appendChild(div);
-            });
-        }).catch(err => console.log(err));
+            if (results && results.length > 0) {
+                pubLat = parseFloat(results[0].lat);
+                pubLng = parseFloat(results[0].lon);
+                radius = 2000;
+                drawCircle();
+            } else {
+                alert("Location not found");
+            }
+        }).catch(err => alert("Error fetching location: " + err));
 });
 
 // Hide suggestions if clicked outside
