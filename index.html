@@ -42,25 +42,14 @@
       border-radius: 6px;
       transition: background 0.2s;
     }
-    #updateBtn { 
-      background-color: #333;  /* dark grey */
-    }
-    #updateBtn:hover { 
-      background-color: #111; 
-    }
-    #shrinkBtn { 
-      background-color: #2a9d8f; 
-    }
-    #shrinkBtn:hover { 
-      background-color: #21766f; 
-    }
-    #togglePubNameBtn { 
-      background-color: #d62828; /* red */
-    }
-    #togglePubNameBtn:hover { 
-      background-color: #a81f1f; 
-    }
+    #updateBtn { background-color: #333; }
+    #updateBtn:hover { background-color: #111; }
+    #shrinkBtn { background-color: #2a9d8f; }
+    #shrinkBtn:hover { background-color: #21766f; }
+    #togglePubNameBtn { background-color: #d62828; }
+    #togglePubNameBtn:hover { background-color: #a81f1f; }
     #radiusDisplay { font-size: 1.2em; text-align: center; }
+
     #pubInputContainer {
       display: flex;
       flex-direction: column;
@@ -118,7 +107,6 @@ let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
-// Random center so pub is inside
 function getRandomCenter(pubLat, pubLng, radius) {
     let margin = 50;
     let maxDistance = Math.max(radius - margin, 1);
@@ -129,7 +117,6 @@ function getRandomCenter(pubLat, pubLng, radius) {
     return [centerLat, centerLng];
 }
 
-// Draw/update circle
 function drawCircle() {
     if (circle) map.removeLayer(circle);
 
@@ -142,7 +129,9 @@ function drawCircle() {
       radius: radius 
     }).addTo(map);
 
-    map.setView([pubLat, pubLng], 14);
+    // Fit view to circle instead of forcing zoom level
+    map.fitBounds(circle.getBounds(), { padding: [30, 30] });
+
     document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m 🎅`;
 }
 
