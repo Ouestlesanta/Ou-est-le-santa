@@ -1,223 +1,239 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Where's Santa?</title>
+  <title>Find the Pub Radius</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <!-- Festive Font -->
-  <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-    html, body {
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: 'Mountains of Christmas', cursive;
-      background: #f0f8ff;
-    }
-    #map { height: 85vh; width: 100%; }
-    #controls {
-      display: flex;
-      flex-direction: column;
-      padding: 10px;
-      gap: 10px;
-      position: relative;
-    }
-    input {
-      font-size: 1.1em;
-      padding: 10px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    button {
-      font-size: 1.1em;
-      padding: 10px;
-      width: 100%;
-      border: none;
-      color: white;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: background 0.2s;
-    }
-    #updateBtn { background-color: #333; }
-    #updateBtn:hover { background-color: #111; }
-    #shrinkBtn { background-color: #2a9d8f; }
-    #shrinkBtn:hover { background-color: #21766f; }
-    #togglePubNameBtn { background-color: #d62828; }
-    #togglePubNameBtn:hover { background-color: #a81f1f; }
-    #radiusDisplay { font-size: 1.2em; text-align: center; }
-
-    #pubInputContainer {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      position: relative;
-    }
-    #suggestions {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: white;
-      border: 1px solid #ccc;
-      max-height: 150px;
-      overflow-y: auto;
-      z-index: 1000;
       font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
     }
-    .suggestion-item {
-      padding: 8px;
+
+    #map {
+      height: 75vh;
+      width: 100%;
+    }
+
+    #controls {
+      padding: 10px;
+      background: #162033;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+      margin-bottom: 5px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 5px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+      font-weight: bold;
       cursor: pointer;
     }
+
+    #updateBtn {
+      background: #333;
+      color: white;
+    }
+
+    #togglePubBtn {
+      background: #b91c1c;
+      color: white;
+    }
+
+    #shrinkBtn {
+      background: #16a34a;
+      color: white;
+    }
+
+    #radiusDisplay {
+      display: block;
+      margin-top: 8px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    #suggestions {
+      background: white;
+      color: black;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .suggestion-item {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      cursor: pointer;
+      font-family: sans-serif;
+    }
+
     .suggestion-item:hover {
       background: #eee;
+    }
+
+    .hidden {
+      display: none;
     }
   </style>
 </head>
 <body>
 
 <div id="controls">
-  <div id="pubInputContainer">
-    <input id="locationInput" type="text" placeholder="Enter pub name or address" value="London Pub">
-    <div id="suggestions"></div>
-  </div>
+  <input id="locationInput" placeholder="Type a pub name or address…" />
+
+  <div id="suggestions"></div>
 
   <button id="updateBtn">Set Pub Location</button>
-  <button id="togglePubNameBtn">Hide Pub Name</button>
+  <button id="togglePubBtn">Hide Pub Name</button>
   <button id="shrinkBtn">Shrink Radius</button>
+
   <span id="radiusDisplay">Radius: 2000 m</span>
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
-let map = L.map('map').setView([51.5074, -0.1278], 14);
+const map = L.map('map').setView([51.5074, -0.1278], 14);
+
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
+const input = document.getElementById("locationInput");
+const suggestions = document.getElementById("suggestions");
+const radiusDisplay = document.getElementById("radiusDisplay");
+const updateBtn = document.getElementById("updateBtn");
+const toggleBtn = document.getElementById("togglePubBtn");
+const shrinkBtn = document.getElementById("shrinkBtn");
+
 let radius = 2000;
-let circle;
 let pubLat = 51.5074;
 let pubLng = -0.1278;
 
-// FIXED circle centre
 let circleCenter = null;
 
-// Create a random centre ONCE
-function createFixedCenter(lat, lng, radius) {
-  let margin = 50;
-  let maxDistance = Math.max(radius - margin, 1);
-  let angle = Math.random() * 2 * Math.PI;
-  let distance = Math.random() * maxDistance;
-  let centerLat = lat + (distance / 111000) * Math.cos(angle);
-  let centerLng = lng + (distance / 111000) * Math.sin(angle) / Math.cos(lat * Math.PI / 180);
-  return [centerLat, centerLng];
+// Create circle once
+const circle = L.circle([0,0], {
+  color: 'red',
+  fillColor: '#f03',
+  fillOpacity: 0.25,
+  radius: radius
+}).addTo(map);
+
+// Random centre
+function getRandomCenter(lat, lng, r) {
+  const angle = Math.random() * 2 * Math.PI;
+  const dist = Math.random() * (r - 10);
+
+  return [
+    lat + (dist / 111000) * Math.cos(angle),
+    lng + (dist / 111000) * Math.sin(angle) / Math.cos(lat * Math.PI / 180)
+  ];
 }
 
-function drawCircle() {
+// Fast distance calculation
+function distMeters(aLat, aLng, bLat, bLng) {
+  const x = (bLng - aLng) * Math.cos((aLat + bLat) * 0.5 * Math.PI / 180);
+  const y = (bLat - aLat) * Math.PI / 180;
+  return Math.sqrt(x*x + y*y) * 6371000;
+}
+
+// Update circle
+function updateCircle() {
   if (!circleCenter) {
-    circleCenter = createFixedCenter(pubLat, pubLng, radius);
+    circleCenter = getRandomCenter(pubLat, pubLng, radius);
   }
 
-  if (circle) map.removeLayer(circle);
-
-  circle = L.circle(circleCenter, {
-    color: 'red',
-    fillColor: '#f94144',
-    fillOpacity: 0.2,
-    radius: radius
-  }).addTo(map);
+  circle.setLatLng(circleCenter);
+  circle.setRadius(radius);
 
   map.fitBounds(circle.getBounds(), { padding: [30, 30] });
 
-  document.getElementById('radiusDisplay').innerText = `Radius: ${Math.round(radius)} m 🎅`;
+  radiusDisplay.textContent = `Radius: ${Math.round(radius)} m`;
 }
 
-// Initial draw
-drawCircle();
-
-// Shrink radius (does NOT change centre)
-document.getElementById('shrinkBtn').addEventListener('click', () => {
-  radius *= 0.75;
-  if (radius < 1) radius = 1;
-  drawCircle();
-});
-
-// Hide/Show pub name + set button
-const toggleBtn = document.getElementById('togglePubNameBtn');
-const pubContainer = document.getElementById('pubInputContainer');
-const setBtn = document.getElementById('updateBtn');
-
-toggleBtn.addEventListener('click', () => {
-  const isHidden = pubContainer.style.display === 'none';
-  if (isHidden) {
-    pubContainer.style.display = 'flex';
-    setBtn.style.display = 'block';
-    toggleBtn.innerText = 'Hide Pub Name';
-  } else {
-    pubContainer.style.display = 'none';
-    setBtn.style.display = 'none';
-    toggleBtn.innerText = 'Show Pub Name';
-  }
-});
-
-// Autocomplete
-const locationInput = document.getElementById('locationInput');
-const suggestionsDiv = document.getElementById('suggestions');
-let debounceTimer;
-
-locationInput.addEventListener('input', () => {
-  clearTimeout(debounceTimer);
-  const query = locationInput.value;
-
-  if (query.length < 2) {
-    suggestionsDiv.innerHTML = '';
+// Search optimisation
+let typingTimer;
+input.addEventListener("input", () => {
+  const q = input.value.trim();
+  if (q.length < 3) {
+    suggestions.innerHTML = "";
     return;
   }
 
-  debounceTimer = setTimeout(() => {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`)
-      .then(res => res.json())
-      .then(results => {
-        suggestionsDiv.innerHTML = '';
-        results.forEach(place => {
-          const div = document.createElement('div');
-          div.className = 'suggestion-item';
-          div.innerText = place.display_name;
-          div.addEventListener('click', () => {
-            locationInput.value = place.display_name;
-            suggestionsDiv.innerHTML = '';
-          });
-          suggestionsDiv.appendChild(div);
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(() => {
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5`)
+      .then(r => r.json())
+      .then(data => {
+        suggestions.innerHTML = "";
+        data.forEach(place => {
+          const div = document.createElement("div");
+          div.className = "suggestion-item";
+          div.textContent = place.display_name;
+          div.onclick = () => {
+            input.value = place.display_name;
+            pubLat = +place.lat;
+            pubLng = +place.lon;
+            radius = 2000;
+            circleCenter = null;
+            suggestions.innerHTML = "";
+            updateCircle();
+          };
+          suggestions.appendChild(div);
         });
-      }).catch(err => console.log(err));
-  }, 300);
+      });
+  }, 200);
 });
 
-// Set pub location (resets centre)
-document.getElementById('updateBtn').addEventListener('click', () => {
-  const query = locationInput.value;
-  if (!query) return;
+// Buttons
+updateBtn.onclick = () => {
+  circleCenter = null;
+  updateCircle();
+};
 
-  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`)
-    .then(res => res.json())
-    .then(results => {
-      if (results && results.length > 0) {
-        pubLat = parseFloat(results[0].lat);
-        pubLng = parseFloat(results[0].lon);
-        radius = 2000;
-        circleCenter = null; // force new random centre
-        drawCircle();
-      } else {
-        alert("Location not found");
-      }
-    }).catch(err => alert("Error fetching location: " + err));
-});
+toggleBtn.onclick = () => {
+  const hidden = input.classList.toggle("hidden");
+  suggestions.classList.toggle("hidden");
+  updateBtn.classList.toggle("hidden");
+
+  toggleBtn.textContent = hidden ? 'Show Pub Name' : 'Hide Pub Name';
+};
+
+shrinkBtn.onclick = () => {
+  radius *= 0.75;
+  if (radius < 5) radius = 5;
+
+  const d = distMeters(pubLat, pubLng, circleCenter[0], circleCenter[1]);
+  if (d > radius) {
+    circleCenter = getRandomCenter(pubLat, pubLng, radius);
+  }
+
+  updateCircle();
+};
+
+// Initial render
+updateCircle();
 </script>
+
 </body>
 </html>
