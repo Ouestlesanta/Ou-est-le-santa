@@ -1,42 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Ou est le Santa?</title>
+  <title>Find the Pub Radius</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-  <!-- Christmas font for radius -->
   <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
     body {
       margin: 0;
-      background: #d9d9d9; /* Festive grey */
       font-family: Arial, sans-serif;
+      background: #d9d9d9;
     }
 
-    #map {
-      height: 75vh;
-      width: 100%;
-    }
+    #map { height: 75vh; width: 100%; }
 
     #controls {
       padding: 10px;
       background: #f0f0f0;
-      color: black;
     }
 
     input {
       width: 100%;
       padding: 10px;
       font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
       margin-bottom: 5px;
-      font-family: Arial, sans-serif; /* normal font for input */
+      border-radius: 6px;
     }
 
     button {
@@ -45,49 +37,41 @@
       margin-top: 5px;
       font-size: 16px;
       border-radius: 6px;
-      border: none;
       font-weight: bold;
       cursor: pointer;
-      font-family: Arial, sans-serif; /* reset button font */
+      border: none;
+      font-family: Arial, sans-serif;
     }
 
     #updateBtn { background: #333; color: white; }
     #togglePubBtn { background: #b91c1c; color: white; }
     #shrinkBtn { background: #16a34a; color: white; }
+    #screenshotBtn { background: #2563eb; color: white; }
 
     #radiusDisplay {
-      display: flex;
-      align-items: center;
-      justify-content: center;
       margin-top: 8px;
-      font-weight: bold;
-      font-size: 18px;
-      font-family: 'Mountains of Christmas', cursive; /* festive font */
+      text-align: center;
+      font-size: 20px;
+      font-family: 'Mountains of Christmas', cursive;
     }
 
     #suggestions {
       background: white;
-      color: black;
       border-radius: 8px;
-      overflow: hidden;
-      margin-bottom: 5px;
       max-height: 200px;
       overflow-y: auto;
+      margin-bottom: 5px;
     }
 
     .suggestion-item {
       padding: 10px;
-      border-bottom: 1px solid #ddd;
       cursor: pointer;
+      border-bottom: 1px solid #ddd;
     }
 
-    .suggestion-item:hover {
-      background: #eee;
-    }
+    .suggestion-item:hover { background: #eee; }
 
-    .hidden {
-      display: none;
-    }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -99,10 +83,9 @@
   <button id="updateBtn">Set Pub Location</button>
   <button id="togglePubBtn">Hide Pub Name</button>
   <button id="shrinkBtn">Shrink Radius</button>
+  <button id="screenshotBtn">Save Map Screenshot</button>
 
-  <span id="radiusDisplay">
-    Radius: 2000 m 🎅
-  </span>
+  <div id="radiusDisplay">Radius: 2000 m 🎅</div>
 </div>
 
 <div id="map"></div>
@@ -116,49 +99,50 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let radius = 2000;
 let circle = null;
-let circleCenter = null;
-
 let pubLat = 51.5074;
 let pubLng = -0.1278;
+let circleCenter = null;
+let prevCenter = null;
+let prevRadius = null;
 
 let input = document.getElementById("locationInput");
 let suggestions = document.getElementById("suggestions");
-let pubBoxVisible = true;
 
-// Random center ensuring pub inside circle
-function getRandomCenter(pubLat, pubLng, radius) {
-  let angle = Math.random() * 2 * Math.PI;
-  let distance = Math.random() * (radius - 10);
-
-  let centerLat = pubLat + (distance / 111000) * Math.cos(angle);
-  let centerLng = pubLng + (distance / 111000) *
-    Math.sin(angle) / Math.cos(pubLat * Math.PI / 180);
-
-  return [centerLat, centerLng];
-}
-
-// Distance calculator
+// Distance helper
 function distanceInMeters(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
-
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1 * Math.PI / 180) *
     Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLng / 2) ** 2;
-
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
-// Draw / update circle
-function drawCircle() {
-  if (!circleCenter) {
-    circleCenter = getRandomCenter(pubLat, pubLng, radius);
-  }
+// Move centre toward pub
+function moveTowardsPub(oldLat, oldLng, pubLat, pubLng, factor) {
+  return [
+    oldLat + (pubLat - oldLat) * factor,
+    oldLng + (pubLng - oldLng) * factor
+  ];
+}
 
+// Random start centre
+function randomCenterAroundPub(lat, lng, radius) {
+  let angle = Math.random() * 2 * Math.PI;
+  let distance = radius * 0.7;
+
+  let latOffset = (distance / 111000) * Math.cos(angle);
+  let lngOffset = (distance / 111000) * Math.sin(angle) / Math.cos(lat * Math.PI / 180);
+
+  return [lat + latOffset, lng + lngOffset];
+}
+
+// Draw circle
+function drawCircle() {
   if (circle) map.removeLayer(circle);
 
   circle = L.circle(circleCenter, {
@@ -174,7 +158,59 @@ function drawCircle() {
     `Radius: ${Math.round(radius)} m 🎅`;
 }
 
-// Nominatim live search
+function circleContainsPub() {
+  let d = distanceInMeters(
+    circleCenter[0], circleCenter[1],
+    pubLat, pubLng
+  );
+  return d <= radius;
+}
+
+function initCircle() {
+  circleCenter = randomCenterAroundPub(pubLat, pubLng, radius);
+  prevCenter = [...circleCenter];
+  prevRadius = radius;
+  drawCircle();
+}
+
+// Shrink logic
+function shrinkCircle() {
+  let newRadius = radius * 0.75;
+
+  let [newLat, newLng] = moveTowardsPub(
+    circleCenter[0], circleCenter[1],
+    pubLat, pubLng,
+    0.25
+  );
+
+  let dist = distanceInMeters(
+    prevCenter[0], prevCenter[1],
+    newLat, newLng
+  );
+
+  let maxAllowed = prevRadius - newRadius - 5;
+
+  if (dist > maxAllowed) {
+    let ratio = maxAllowed / dist;
+    newLat = prevCenter[0] + (newLat - prevCenter[0]) * ratio;
+    newLng = prevCenter[1] + (newLng - prevCenter[1]) * ratio;
+  }
+
+  radius = newRadius;
+  circleCenter = [newLat, newLng];
+
+  if (!circleContainsPub()) {
+    initCircle();
+    return;
+  }
+
+  prevCenter = [...circleCenter];
+  prevRadius = radius;
+
+  drawCircle();
+}
+
+// Live search
 let searchTimeout = null;
 input.addEventListener("input", () => {
   let query = input.value.trim();
@@ -198,53 +234,42 @@ input.addEventListener("input", () => {
             pubLat = parseFloat(place.lat);
             pubLng = parseFloat(place.lon);
             radius = 2000;
-            circleCenter = null;
-            drawCircle();
-            suggestions.innerHTML = ""; // Hide dropdown
+            initCircle();
+            suggestions.innerHTML = "";
           };
           suggestions.appendChild(div);
         });
       });
-  }, 250);
+  }, 200);
 });
 
-// Set pub button
-document.getElementById("updateBtn").onclick = () => {
-  circleCenter = null;
-  drawCircle();
-};
+// Buttons
+document.getElementById("updateBtn").onclick = () => initCircle();
+document.getElementById("shrinkBtn").onclick = () => shrinkCircle();
 
-// Hide/Show pub box + button
+// Hide/show pub box
+let pubBoxVisible = true;
 document.getElementById("togglePubBtn").onclick = () => {
   pubBoxVisible = !pubBoxVisible;
-
   input.classList.toggle("hidden");
   suggestions.classList.toggle("hidden");
   document.getElementById("updateBtn").classList.toggle("hidden");
-
   document.getElementById("togglePubBtn").innerText =
     pubBoxVisible ? "Hide Pub Name" : "Show Pub Name";
 };
 
-// Shrink radius logic
-document.getElementById("shrinkBtn").onclick = () => {
-  radius *= 0.75;
-  if (radius < 5) radius = 5;
-
-  let dist = distanceInMeters(
-    pubLat, pubLng,
-    circleCenter[0], circleCenter[1]
-  );
-
-  if (dist > radius) {
-    circleCenter = getRandomCenter(pubLat, pubLng, radius);
-  }
-
-  drawCircle();
+// Screenshot button
+document.getElementById("screenshotBtn").onclick = () => {
+  html2canvas(document.body).then(canvas => {
+    const link = document.createElement("a");
+    link.download = "map-screenshot.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
 };
 
-// Initial circle
-drawCircle();
+// Start
+initCircle();
 </script>
 
 </body>
