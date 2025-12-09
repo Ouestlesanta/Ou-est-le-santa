@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Find the Pub Radius</title>
+  <title>Ou est le Santa</title>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
     body {
@@ -46,7 +45,6 @@
     #updateBtn { background: #333; color: white; }
     #togglePubBtn { background: #b91c1c; color: white; }
     #shrinkBtn { background: #16a34a; color: white; }
-    #screenshotBtn { background: #2563eb; color: white; }
 
     #radiusDisplay {
       margin-top: 8px;
@@ -83,7 +81,6 @@
   <button id="updateBtn">Set Pub Location</button>
   <button id="togglePubBtn">Hide Pub Name</button>
   <button id="shrinkBtn">Shrink Radius</button>
-  <button id="screenshotBtn">Save Map Screenshot</button>
 
   <div id="radiusDisplay">Radius: 2000 m 🎅</div>
 </div>
@@ -256,16 +253,6 @@ document.getElementById("togglePubBtn").onclick = () => {
   document.getElementById("updateBtn").classList.toggle("hidden");
   document.getElementById("togglePubBtn").innerText =
     pubBoxVisible ? "Hide Pub Name" : "Show Pub Name";
-};
-
-// Screenshot button
-document.getElementById("screenshotBtn").onclick = () => {
-  html2canvas(document.body).then(canvas => {
-    const link = document.createElement("a");
-    link.download = "map-screenshot.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  });
 };
 
 // Start
